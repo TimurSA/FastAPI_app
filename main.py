@@ -74,7 +74,6 @@ async def get():
 # Создаем websocket
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-
     # Встроенная функция отправления результа вычисления
     async def send_factorial_result(number: str):
         result = await calculate_factorial(int(number))
@@ -84,5 +83,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     # Ждем получения сообщений
     while True:
+
         data = await websocket.receive_text()
-        asyncio.create_task(send_factorial_result(data))
+        print(f'Calculating factorial of {data}')
+
+        try:
+            task = asyncio.create_task(send_factorial_result(data))
+        except:
+            print('An error has occurred...')
