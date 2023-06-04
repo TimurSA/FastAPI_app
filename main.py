@@ -56,6 +56,7 @@ html = """
 """
 
 
+# Функция, которая выполняется при запуске сервера
 @app.on_event("startup")
 async def app_startup():
     global cache
@@ -65,11 +66,13 @@ async def app_startup():
             cache = json.loads(json_data)
 
 
+# Функция, которая выполняется при закрытии сервера
 @app.on_event("shutdown")
 async def shutdown_event():
     global cache
+    # Сохраняем запросы
     with open("cache.txt", mode="r+") as file:
-        loaded_data=None
+        loaded_data = None
         if cache:
             loaded_data = json.dumps(cache)
         file.write(loaded_data)
@@ -87,15 +90,28 @@ async def calculate_factorial(number: int) -> int:
         return result
 
 
+# Очистить кэш
+def clear_cache():
+    global cache
+    cache = {}
+
+
 # Возращает главную страницу
 @app.get("/")
 async def get():
     return HTMLResponse(html)
 
 
+# Страница, где показан кэш
+@app.get("/cache")
+async def get():
+    return cache
+
+
 # Создаем websocket
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+
     # Встроенная функция отправления результа вычисления
     async def send_factorial_result(number: str):
         result = await calculate_factorial(int(number))
@@ -108,10 +124,10 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
 
         data = await websocket.receive_text()
+        # Если запрос мы уже обрабатывали, то просто выводим его, иначе создаем task рассчета факториала
         if cache.get(data):
             print(f'Getting factorial of {data} from cache')
             await websocket.send_text(f"Factorial {data}! = {str(cache[data])}")
-            continue
         else:
             print(f'Calculating factorial of {data}')
             task = asyncio.create_task(send_factorial_result(data))
