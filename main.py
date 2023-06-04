@@ -13,9 +13,12 @@ pip install uvicorn
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 import asyncio
+import json
 
 # Создаем наше FastAPI приложение
 app = FastAPI()
+# Кэш запросов
+cache = {}
 
 # HTML код главной страницы
 html = """ 
@@ -53,6 +56,25 @@ html = """
 """
 
 
+@app.on_event("startup")
+async def app_startup():
+    global cache
+    with open("cache.txt", mode="r+") as file:
+        json_data = file.read()
+        if json_data:
+            cache = json.loads(json_data)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global cache
+    with open("cache.txt", mode="r+") as file:
+        loaded_data=None
+        if cache:
+            loaded_data = json.dumps(cache)
+        file.write(loaded_data)
+
+
 # Функция вычисления факториала числа
 async def calculate_factorial(number: int) -> int:
     if number == 0 or number == 1:
@@ -77,6 +99,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # Встроенная функция отправления результа вычисления
     async def send_factorial_result(number: str):
         result = await calculate_factorial(int(number))
+        cache[data] = result
         await websocket.send_text(f"Factorial {number}! = {str(result)}")
 
     # Ждем отправки сообщений
@@ -85,9 +108,10 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
 
         data = await websocket.receive_text()
-        print(f'Calculating factorial of {data}')
-
-        try:
+        if cache.get(data):
+            print(f'Getting factorial of {data} from cache')
+            await websocket.send_text(f"Factorial {data}! = {str(cache[data])}")
+            continue
+        else:
+            print(f'Calculating factorial of {data}')
             task = asyncio.create_task(send_factorial_result(data))
-        except:
-            print('An error has occurred...')
