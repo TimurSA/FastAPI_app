@@ -4,14 +4,17 @@
 pip install fastapi
 pip install websockets
 pip install uvicorn
+pip install pytest-asyncio
+pip install pytest
 
 Для запуска сервера впишите в терминал: uvicorn main:app --reload
 и перейдите по ссылке: http://127.0.0.1:8000
 
 """
-
+from typing import Union
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
+import requests
 import asyncio
 import json
 
@@ -102,15 +105,22 @@ async def get():
     return HTMLResponse(html)
 
 
+@app.get("/greetings")
+async def greet():
+    return {"Timur": 'Hello, I am aiming to become a great Junior Python Developer'}
+
+
 # Страница, где показан кэш
 @app.get("/cache")
-async def get():
+async def get_cache():
+    global cache
     return cache
 
 
 # Создаем websocket
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global cache
 
     # Встроенная функция отправления результа вычисления
     async def send_factorial_result(number: str):
